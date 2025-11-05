@@ -2,33 +2,45 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Game</title>
+  <title>Glyphic Babylon + Lua App</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://unpkg.com/fengari-web"></script>
   <style>
-    html, body {
-      margin: 0;
-      overflow: hidden;
-      background-color: #111;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    html, body { margin: 0; overflow: hidden; background: #111; }
+    canvas { width: 100%; height: 100%; display: block; }
   </style>
 </head>
 <body>
   <canvas id="renderCanvas"></canvas>
 
   <script>
-    // List of Lua files to load (must be in same folder)
+    // Babylon.js setup (no default cube)
+    const canvas = document.getElementById("renderCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+    const scene = new BABYLON.Scene(engine);
+
+    const camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 4, 6, BABYLON.Vector3.Zero(), scene);
+    camera.attachControl(canvas, true);
+
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+
+    engine.runRenderLoop(() => scene.render());
+    window.addEventListener("resize", () => engine.resize());
+
+    // Expose Babylon.js objects to Lua
+    window.BABYLON_SCENE = scene;
+    window.BABYLON_ENGINE = engine;
+    window.BABYLON = BABYLON;
+  </script>
+
+  <script>
     const luaFiles = [
-      "lua.lua"
-     
+      "init.lua",
+      "grid.lua",
+      "rotate.lua",
+      "scale.lua"
     ];
 
-    // Load and run each Lua file using Fengari
     const loadLua = async (filename) => {
       const response = await fetch(filename);
       const code = await response.text();
@@ -41,29 +53,6 @@
         await loadLua(file);
       }
     })();
-  </script>
-
-  <!-- Optional: Babylon.js scene setup in JS -->
-  <script>
-    const canvas = document.getElementById("renderCanvas");
-    const engine = new BABYLON.Engine(canvas, true);
-    const scene = new BABYLON.Scene(engine);
-
-    const camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 4, 6, BABYLON.Vector3.Zero(), scene);
-    camera.attachControl(canvas, true);
-
-    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
-
-    const box = BABYLON.MeshBuilder.CreateBox("cube", { size: 1 }, scene);
-    box.position.y = 1;
-
-    engine.runRenderLoop(() => {
-      scene.render();
-    });
-
-    window.addEventListener("resize", () => {
-      engine.resize();
-    });
   </script>
 </body>
 </html>
