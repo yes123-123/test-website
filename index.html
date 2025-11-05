@@ -1,200 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>client</title>
-  <link rel="icon" href="icon.png" type="image/png">
-  <link href="https://fonts.googleapis.com/css2?family=Arimo:ital,wght@1,700&display=swap" rel="stylesheet">
-
+  <title>Lua Shape Scene</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: #eae7d6; /* ← light yellow-gray background */
-      cursor: url('cursor.cur'), auto;
-    }
-
-    #renderCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      border: none;
-      display: block;
-    }
-
-
-    #renderCanvas.editModeActive {
-      width: 75vw;
-      height: 75vh;
-      left: 0;
-      top: 25vh;
-    }
-
-    #editButton {
-      position: absolute;
-      top: 0;
-      left: 72px;
-      z-index: 10;
-      width: 100px;
-      height: 22px;
-      font-size: 14px;
-      font-family: "Arimo", serif;
-      font-style: italic;
-      font-weight: bold;
-      color: white;
-      background-color: transparent;
-      box-sizing: border-box;
-      border: none;
-      outline: none;
-      border-radius: 0;
-      padding: 2px;
-      text-align: center;
-      cursor: pointer;
-      text-shadow:
-        -1px -1px 0 black,
-         1px -1px 0 black,
-        -1px  1px 0 black,
-         1px  1px 0 black;
-    }
-
-    #editButton:active {
-      background-color: rgba(128, 128, 128, 0);
-    }
+    body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
+    canvas { background: #222; display: block; margin: 20px auto; }
   </style>
+  <script src="https://unpkg.com/fengari-web/dist/fengari-web.js"></script>
 </head>
 <body>
+  <h1>Lua Shape Scene</h1>
+  <canvas id="scene" width="800" height="600"></canvas>
+  <pre id="output"></pre>
 
-  <button id="editButton" onclick="
-    const open = this.textContent === 'Edit Mode';
-    this.textContent = open ? '× Edit Mode' : 'Edit Mode';
-    this.style.textAlign = open ? 'left' : 'center';
-    this.style.padding = open ? '2px 6px' : '2px';
-    document.getElementById('renderCanvas').classList.toggle('editModeActive', open);
-  ">Edit Mode</button>
-
-  <canvas id="renderCanvas"></canvas>
-  <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script>
-    const canvas = document.getElementById("renderCanvas");
-    const engine = new BABYLON.Engine(canvas, true);
-    const scene = new BABYLON.Scene(engine);
-    scene.clearColor = new BABYLON.Color3(1, 1, 1);
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+    const output = document.getElementById("output");
+    const scene = [];
 
-    document.getElementById("editButton").addEventListener("click", () => {
-      console.log("Edit button clicked");
+    const Vector3 = {
+      new: (x, y, z) => ({ x, y, z })
+    };
+
+    const Color3 = {
+      new: (r, g, b) => ({ r, g, b })
+    };
+
+    // List of Lua files in the folder
+    const luaFiles = ["cube.lua", "sphere.lua", "wedge.lua"]; // Add more as needed
+
+    luaFiles.forEach(file => {
+      fetch(file)
+        .then(res => res.text())
+        .then(luaCode => {
+          const self = {
+            Position: { x: 0, y: 0, z: 0 },
+            Size: { x: 1, y: 1, z: 1 },
+            Color: { r: 1, g: 1, b: 1 },
+            Shape: null
+          };
+
+          const set = {
+            self: shape => { self.Shape = shape; }
+          };
+
+          fengari.load(luaCode, {
+            env: fengari.interop.tojs({ set, self, Vector3, Color3 }),
+            stdout: text => output.textContent += text
+          })();
+
+          scene.push(self);
+          renderScene();
+        });
     });
 
-    new BABYLON.DirectionalLight("headLight", new BABYLON.Vector3(1, 1, 1), scene).position = new BABYLON.Vector3(5, -5, -5);
-    new BABYLON.DirectionalLight("cubeLight", new BABYLON.Vector3(-1, -1, -1), scene).position = new BABYLON.Vector3(-5, 5, 5);
-    new BABYLON.HemisphericLight("ambient", new BABYLON.Vector3(0, 1, 0), scene);
+    function renderScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      output.textContent += "\n--- Scene ---\n";
 
-    const charMat = new BABYLON.StandardMaterial("charMat", scene);
-    charMat.diffuseColor = new BABYLON.Color3(0.2, 0.6, 1);
-    charMat.alpha = 0.5;
+      scene.forEach((obj, i) => {
+        output.textContent += `#${i + 1} ${obj.Shape} at (${obj.Position.x}, ${obj.Position.y}, ${obj.Position.z})\n`;
 
-    const character = BABYLON.MeshBuilder.CreateBox("character", { width: 2, height: 5, depth: 1 }, scene);
-    character.material = charMat;
-    character.position.y = 2.5;
-    character.metadata = { basePosition: character.position.clone() };
-
-    const inputMap = {};
-    window.addEventListener("keydown", e => inputMap[e.key.toLowerCase()] = true);
-    window.addEventListener("keyup", e => inputMap[e.key.toLowerCase()] = false);
-
-    let jumpTime = 0, isJumping = false, jumpDir = BABYLON.Vector3.Zero(), jumpLean = 0;
-    let visualOffset = BABYLON.Vector3.Zero();
-
-    const camera = new BABYLON.UniversalCamera("thirdPersonCam", new BABYLON.Vector3(0, 5, -15), scene);
-    scene.activeCamera = camera;
-    camera.attachControl(canvas, false);
-    camera.inputs.clear();
-    camera.rotation = new BABYLON.Vector3(0, 0, 0);
-
-    const cameraOffset = new BABYLON.Vector3(0, 3, -15);
-    let yaw = 0, pitch = 0, isDragging = false;
-
-    canvas.addEventListener("pointerdown", () => isDragging = true);
-    canvas.addEventListener("pointerup", () => isDragging = false);
-    canvas.addEventListener("pointermove", e => {
-      if (!isDragging) return;
-      yaw += e.movementX * 0.005;
-      pitch -= e.movementY * 0.005;
-      pitch = BABYLON.Scalar.Clamp(pitch, -Math.PI / 3, Math.PI / 3);
-    });
-
-    scene.onBeforeRenderObservable.add(() => {
-      const speed = 0.2, jumpDuration = 60, jumpHeight = 10;
-      const forward = new BABYLON.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-      const right = new BABYLON.Vector3(Math.sin(yaw + Math.PI / 2), 0, Math.cos(yaw + Math.PI / 2));
-      let moveDir = BABYLON.Vector3.Zero();
-
-      if (!isJumping) {
-        if (inputMap["w"] || inputMap["arrowup"]) moveDir.addInPlace(forward);
-        if (inputMap["s"] || inputMap["arrowdown"]) moveDir.addInPlace(forward.scale(-1));
-        if (inputMap["a"] || inputMap["arrowleft"]) moveDir.addInPlace(right.scale(-1));
-        if (inputMap["d"] || inputMap["arrowright"]) moveDir.addInPlace(right);
-
-        if (!moveDir.equals(BABYLON.Vector3.Zero())) {
-          moveDir.normalize();
-          character.metadata.basePosition.addInPlace(moveDir.scale(speed));
-          const targetYaw = Math.atan2(moveDir.x, moveDir.z);
-          character.rotation.y = BABYLON.Scalar.Lerp(character.rotation.y, targetYaw, 0.2);
+        if (obj.Shape === "cube") {
+          ctx.fillStyle = `rgb(${obj.Color.r * 255}, ${obj.Color.g * 255}, ${obj.Color.b * 255})`;
+          ctx.fillRect(
+            canvas.width / 2 + obj.Position.x * 10,
+            canvas.height / 2 + obj.Position.y * 10,
+            obj.Size.x * 20,
+            obj.Size.y * 20
+          );
         }
-
-        if ((inputMap[" "] || inputMap["space"])) {
-          isJumping = true;
-          jumpTime = 0;
-          jumpDir = moveDir.clone();
-          jumpLean = moveDir.length() > 0.01 ? 0.2 : 0;
-          character.rotation.x = jumpLean;
-        }
-      } else {
-        const t = jumpTime / jumpDuration;
-        const arc = Math.sin(Math.PI * t) * jumpHeight;
-        character.metadata.basePosition.y = 2.5 + arc;
-        character.metadata.basePosition.addInPlace(jumpDir.scale(speed));
-        jumpTime++;
-        if (jumpTime >= jumpDuration) {
-          character.metadata.basePosition.y = 2.5;
-          isJumping = false;
-          jumpLean = 0;
-          character.rotation.x = 0;
-        }
-      }
-
-      const isMoving = moveDir.length() > 0.01 || isJumping;
-      const offsetScale = isMoving ? 3 : 1;
-      const targetOffset = moveDir.scale(offsetScale);
-      visualOffset = BABYLON.Vector3.Lerp(visualOffset, targetOffset, 0.1);
-
-      character.position = character.metadata.basePosition.add(visualOffset);
-      camera.setTarget(character.metadata.basePosition);
-
-      const offsetX = Math.sin(yaw) * cameraOffset.z;
-      const offsetZ = Math.cos(yaw) * cameraOffset.z;
-      const offsetY = Math.sin(pitch) * cameraOffset.z;
-
-      const targetPos = new BABYLON.Vector3(
-        character.metadata.basePosition.x + offsetX,
-        character.metadata.basePosition.y + cameraOffset.y + offsetY,
-        character.metadata.basePosition.z + offsetZ
-      );
-
-      camera.position = BABYLON.Vector3.Lerp(camera.position, targetPos, 0.1);
-    });
-
-    engine.runRenderLoop(() => {
-      scene.render();
-    });
-
-    window.addEventListener("resize", () => {
-      engine.resize();
-    });
+        // Add other shapes here (sphere, wedge, etc.)
+      });
+    }
   </script>
 </body>
 </html>
