@@ -2,79 +2,70 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Lua Shape Scene</title>
+  <title>Game</title>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://unpkg.com/fengari-web"></script>
   <style>
-    body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
-    canvas { background: #222; display: block; margin: 20px auto; }
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #111;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
   </style>
-  <script src="https://unpkg.com/fengari-web/dist/fengari-web.js"></script>
 </head>
 <body>
-  <h1>Lua Shape Scene</h1>
-  <canvas id="scene" width="800" height="600"></canvas>
-  <pre id="output"></pre>
+  <canvas id="renderCanvas"></canvas>
 
   <script>
-    const canvas = document.getElementById("scene");
-    const ctx = canvas.getContext("2d");
-    const output = document.getElementById("output");
-    const scene = [];
+    // List of Lua files to load (must be in same folder)
+    const luaFiles = [
+      "init.lua",
+      "grid.lua",
+      "rotate.lua",
+      "scale.lua"
+    ];
 
-    const Vector3 = {
-      new: (x, y, z) => ({ x, y, z })
+    // Load and run each Lua file using Fengari
+    const loadLua = async (filename) => {
+      const response = await fetch(filename);
+      const code = await response.text();
+      fengari.load(code)();
+      console.log("Loaded:", filename);
     };
 
-    const Color3 = {
-      new: (r, g, b) => ({ r, g, b })
-    };
+    (async () => {
+      for (const file of luaFiles) {
+        await loadLua(file);
+      }
+    })();
+  </script>
 
-    // List of Lua files in the folder
-    const luaFiles = ["lua.lua", "cube.lua", "sphere.lua", "wedge.lua"]; // Add more as needed
+  <!-- Optional: Babylon.js scene setup in JS -->
+  <script>
+    const canvas = document.getElementById("renderCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+    const scene = new BABYLON.Scene(engine);
 
-    luaFiles.forEach(file => {
-      fetch(file)
-        .then(res => res.text())
-        .then(luaCode => {
-          const self = {
-            Position: { x: 0, y: 0, z: 0 },
-            Size: { x: 1, y: 1, z: 1 },
-            Color: { r: 1, g: 1, b: 1 },
-            Shape: null
-          };
+    const camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 4, 6, BABYLON.Vector3.Zero(), scene);
+    camera.attachControl(canvas, true);
 
-          const set = {
-            self: shape => { self.Shape = shape; }
-          };
+    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
 
-          fengari.load(luaCode, {
-            env: fengari.interop.tojs({ set, self, Vector3, Color3 }),
-            stdout: text => output.textContent += text
-          })();
+    const box = BABYLON.MeshBuilder.CreateBox("cube", { size: 1 }, scene);
+    box.position.y = 1;
 
-          scene.push(self);
-          renderScene();
-        });
+    engine.runRenderLoop(() => {
+      scene.render();
     });
 
-    function renderScene() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      output.textContent += "\n--- Scene ---\n";
-
-      scene.forEach((obj, i) => {
-        output.textContent += `#${i + 1} ${obj.Shape} at (${obj.Position.x}, ${obj.Position.y}, ${obj.Position.z})\n`;
-
-        if (obj.Shape === "cube") {
-          ctx.fillStyle = `rgb(${obj.Color.r * 255}, ${obj.Color.g * 255}, ${obj.Color.b * 255})`;
-          ctx.fillRect(
-            canvas.width / 2 + obj.Position.x * 10,
-            canvas.height / 2 + obj.Position.y * 10,
-            obj.Size.x * 20,
-            obj.Size.y * 20
-          );
-        }
-        // Add other shapes here (sphere, wedge, etc.)
-      });
-    }
+    window.addEventListener("resize", () => {
+      engine.resize();
+    });
   </script>
 </body>
 </html>
