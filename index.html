@@ -2,12 +2,20 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Glyphic Babylon + Lua App</title>
+  <title>Lua</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
   <script src="https://unpkg.com/fengari-web"></script>
   <style>
-    html, body { margin: 0; overflow: hidden; background: #111; }
-    canvas { width: 100%; height: 100%; display: block; }
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #111;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -28,12 +36,14 @@
     window.addEventListener("resize", () => engine.resize());
 
     // Expose Babylon.js objects to Lua
+    window.BABYLON = BABYLON;
     window.BABYLON_SCENE = scene;
     window.BABYLON_ENGINE = engine;
-    window.BABYLON = BABYLON;
+    window.BABYLON_CANVAS = canvas;
   </script>
 
   <script>
+    // List of Lua files to load (must be in same folder)
     const luaFiles = [
       "init.lua",
       "grid.lua",
@@ -41,6 +51,7 @@
       "scale.lua"
     ];
 
+    // Load and run each Lua file using Fengari
     const loadLua = async (filename) => {
       const response = await fetch(filename);
       const code = await response.text();
