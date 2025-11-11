@@ -11,6 +11,7 @@
 <body>
   <canvas id="renderCanvas"></canvas>
   <script>
+    // 🔮 Babylon setup
     const canvas = document.getElementById("renderCanvas");
     const engine = new BABYLON.Engine(canvas, true);
     const scene = new BABYLON.Scene(engine);
@@ -18,6 +19,7 @@
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
+    // 🧩 Graphics.new()
     const graphics = {
       new: function(type, props = {}) {
         let mesh;
@@ -36,10 +38,17 @@
       }
     };
 
+    // ⏱️ wait(t)
     function wait(seconds) {
       return new Promise(resolve => setTimeout(resolve, seconds * 1000));
     }
 
+    // 🔧 Convert Lua-style {x=0, y=1} to JS-style {"x":0, "y":1}
+    function luaToJSObject(luaStr) {
+      return luaStr.replace(/(\w+)\s*=/g, '"$1":');
+    }
+
+    // 🧠 Interpreter
     async function runScript(code) {
       const lines = code.split("\n");
       for (let line of lines) {
@@ -51,7 +60,9 @@
           const match = line.match(/graphics\.new\("([^"]+)",\s*(\{.*\})\)/);
           if (match) {
             const type = match[1];
-            const props = eval("(" + match[2] + ")");
+            const rawProps = match[2];
+            const jsProps = luaToJSObject(rawProps);
+            const props = eval("(" + jsProps + ")");
             graphics.new(type, props);
           }
         } else if (line.startsWith("print(")) {
@@ -61,7 +72,7 @@
       }
     }
 
-    // 🧪 Load cube.lua and run it
+    // 📜 Load cube.lua and run it
     fetch("cube.lua")
       .then(res => res.text())
       .then(code => runScript(code));
