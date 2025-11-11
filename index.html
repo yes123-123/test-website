@@ -1,69 +1,73 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Lua</title>
+  <title>Roblox at Home</title>
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://unpkg.com/fengari-web"></script>
   <style>
-    html, body {
-      margin: 0;
-      overflow: hidden;
-      background-color: #111;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+    html, body { margin: 0; overflow: hidden; height: 100%; }
+    canvas { width: 100%; height: 100%; display: block; }
   </style>
 </head>
 <body>
   <canvas id="renderCanvas"></canvas>
-
   <script>
-    // Babylon.js setup (no default cube)
     const canvas = document.getElementById("renderCanvas");
     const engine = new BABYLON.Engine(canvas, true);
     const scene = new BABYLON.Scene(engine);
-
-    const camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 4, 6, BABYLON.Vector3.Zero(), scene);
+    const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/2, Math.PI/4, 10, BABYLON.Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
+    new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+    const graphics = {
+      new: function(type, props = {}) {
+        let mesh;
+        switch(type) {
+          case "cube":
+            mesh = BABYLON.MeshBuilder.CreateBox("cube", {}, scene);
+            break;
+          case "sphere":
+            mesh = BABYLON.MeshBuilder.CreateSphere("sphere", {}, scene);
+            break;
+        }
+        if (mesh && props.x !== undefined) mesh.position.x = props.x;
+        if (mesh && props.y !== undefined) mesh.position.y = props.y;
+        if (mesh && props.z !== undefined) mesh.position.z = props.z;
+        return mesh;
+      }
+    };
+
+    function wait(seconds) {
+      return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    }
+
+    async function runScript(code) {
+      const lines = code.split("\n");
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith("wait(")) {
+          const t = parseFloat(line.match(/wait\(([^)]+)\)/)[1]);
+          await wait(t);
+        } else if (line.startsWith("graphics.new")) {
+          const match = line.match(/graphics\.new\("([^"]+)",\s*(\{.*\})\)/);
+          if (match) {
+            const type = match[1];
+            const props = eval("(" + match[2] + ")");
+            graphics.new(type, props);
+          }
+        } else if (line.startsWith("print(")) {
+          const msg = line.match(/print\(([^)]+)\)/)[1];
+          console.log(eval(msg));
+        }
+      }
+    }
+
+    // 🧪 Load cube.lua and run it
+    fetch("cube.lua")
+      .then(res => res.text())
+      .then(code => runScript(code));
 
     engine.runRenderLoop(() => scene.render());
     window.addEventListener("resize", () => engine.resize());
-
-    // Expose Babylon.js objects to Lua
-    window.BABYLON = BABYLON;
-    window.BABYLON_SCENE = scene;
-    window.BABYLON_ENGINE = engine;
-    window.BABYLON_CANVAS = canvas;
-  </script>
-
-  <script>
-    // List of Lua files to load (must be in same folder)
-    const luaFiles = [
-      "init.lua",
-      "grid.lua",
-      "rotate.lua",
-      "scale.lua"
-    ];
-
-    // Load and run each Lua file using Fengari
-    const loadLua = async (filename) => {
-      const response = await fetch(filename);
-      const code = await response.text();
-      fengari.load(code)();
-      console.log("Loaded:", filename);
-    };
-
-    (async () => {
-      for (const file of luaFiles) {
-        await loadLua(file);
-      }
-    })();
   </script>
 </body>
 </html>
