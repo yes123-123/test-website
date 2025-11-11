@@ -1,4 +1,4 @@
-set.self("cube")
-self.Position = Vector3.new(0,0,0)
-self.Size = Vector3.new(1,2,1)
-self.Rotation = Vector3.new(45,45,45)
+print("Spawning cube")
+graphics.new("cube", {x=0, y=1, z=0})
+wait(1)
+graphics.new("cube", {x=2, y=1, z=0})
