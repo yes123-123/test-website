@@ -19,16 +19,22 @@
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // 🧩 Graphics.new()
+    // 🧩 Graphics.new() with duplicate removal
     const graphics = {
       new: function(type, props = {}) {
+        const name = type; // always use same name
+        const existing = scene.getMeshByName(name);
+        if (existing) {
+          existing.dispose(); // remove duplicate before spawning
+        }
+
         let mesh;
         switch(type) {
           case "cube":
-            mesh = BABYLON.MeshBuilder.CreateBox("cube", {}, scene);
+            mesh = BABYLON.MeshBuilder.CreateBox(name, {}, scene);
             break;
           case "sphere":
-            mesh = BABYLON.MeshBuilder.CreateSphere("sphere", {}, scene);
+            mesh = BABYLON.MeshBuilder.CreateSphere(name, {}, scene);
             break;
         }
         if (mesh && props.x !== undefined) mesh.position.x = props.x;
