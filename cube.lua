@@ -1,5 +1,7 @@
 print("Spawning cube")
-graphics.new("cube", {x=0, y=1, z=0})
+local var = graphics.new("cube")
+var.size = Vector3.new(64,0.4,64)
+var.collision = true
 wait(1)
 print("wait function test")
 wait(1)
