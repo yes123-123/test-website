@@ -19,7 +19,7 @@
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // 🧩 Graphics.new() with duplicate removal + collision
+    // 🧩 Graphics.new() with duplicate removal + collision stub
     const graphics = {
       new: function(type, props = {}) {
         const name = type;
@@ -51,8 +51,8 @@
         if (props.y !== undefined) mesh.position.y = props.y;
         if (props.z !== undefined) mesh.position.z = props.z;
 
-        // Collision ritual
-        if (props.collision === true) mesh.checkCollisions = true;
+        // Collision ritual (stubbed, not active yet)
+        mesh.collisionFlag = props.collision || false;
 
         return mesh;
       }
@@ -100,7 +100,7 @@
                 depth: values[2]
               }, scene);
               newMesh.position = mesh.position.clone();
-              newMesh.checkCollisions = mesh.checkCollisions;
+              newMesh.collisionFlag = mesh.collisionFlag;
               mesh.dispose();
               window[varName] = newMesh;
             }
