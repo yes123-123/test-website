@@ -15,11 +15,11 @@
     const canvas = document.getElementById("renderCanvas");
     const engine = new BABYLON.Engine(canvas, true);
     const scene = new BABYLON.Scene(engine);
-    const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/2, Math.PI/4, 10, BABYLON.Vector3.Zero(), scene);
+    const camera = new BABYLON.ArcRotateCamera("camera", Math.PI/2, Math.PI/4, 100, BABYLON.Vector3.Zero(), scene);
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // 🧩 Graphics.new() with duplicate removal + collision + size
+    // 🧩 Graphics.new() with duplicate removal + collision
     const graphics = {
       new: function(type, props = {}) {
         const name = type;
@@ -57,6 +57,7 @@
         return mesh;
       }
     };
+
     // ⏱️ wait(t)
     function wait(seconds) {
       return new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -93,7 +94,15 @@
             const values = match[2].split(",").map(v => parseFloat(v.trim()));
             const mesh = window[varName];
             if (mesh) {
-              mesh.scaling = new BABYLON.Vector3(values[0], values[1], values[2]);
+              const newMesh = BABYLON.MeshBuilder.CreateBox(mesh.name, {
+                width: values[0],
+                height: values[1],
+                depth: values[2]
+              }, scene);
+              newMesh.position = mesh.position.clone();
+              newMesh.checkCollisions = mesh.checkCollisions;
+              mesh.dispose();
+              window[varName] = newMesh;
             }
           }
         } else if (line.startsWith("graphics.new")) {
