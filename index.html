@@ -19,31 +19,41 @@
     camera.attachControl(canvas, true);
     new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-    // 🧩 Graphics.new() with duplicate removal
+    // 🧩 Graphics.new() with duplicate removal + collision + size
     const graphics = {
       new: function(type, props = {}) {
-        const name = type; // always use same name
+        const name = type;
         const existing = scene.getMeshByName(name);
-        if (existing) {
-          existing.dispose(); // remove duplicate before spawning
-        }
+        if (existing) existing.dispose();
 
         let mesh;
         switch(type) {
           case "cube":
-            mesh = BABYLON.MeshBuilder.CreateBox(name, {}, scene);
+            mesh = BABYLON.MeshBuilder.CreateBox(name, { size: 1 }, scene);
             break;
           case "sphere":
-            mesh = BABYLON.MeshBuilder.CreateSphere(name, {}, scene);
+            mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1 }, scene);
             break;
         }
-        if (mesh && props.x !== undefined) mesh.position.x = props.x;
-        if (mesh && props.y !== undefined) mesh.position.y = props.y;
-        if (mesh && props.z !== undefined) mesh.position.z = props.z;
+
+        if (!mesh) return null;
+
+        // Position ritual
+        if (props.x !== undefined) mesh.position.x = props.x;
+        if (props.y !== undefined) mesh.position.y = props.y;
+        if (props.z !== undefined) mesh.position.z = props.z;
+
+        // Collision ritual
+        if (props.collision === true) mesh.checkCollisions = true;
+
+        // Size ritual (Vector3 scaling)
+        if (props.size) {
+          mesh.scaling = new BABYLON.Vector3(props.size.x, props.size.y, props.size.z);
+        }
+
         return mesh;
       }
     };
-
     // ⏱️ wait(t)
     function wait(seconds) {
       return new Promise(resolve => setTimeout(resolve, seconds * 1000));
