@@ -29,10 +29,18 @@
         let mesh;
         switch(type) {
           case "cube":
-            mesh = BABYLON.MeshBuilder.CreateBox(name, { size: 1 }, scene);
+            mesh = BABYLON.MeshBuilder.CreateBox(name, {
+              width: props.size?.x || 1,
+              height: props.size?.y || 1,
+              depth: props.size?.z || 1
+            }, scene);
             break;
           case "sphere":
-            mesh = BABYLON.MeshBuilder.CreateSphere(name, { diameter: 1 }, scene);
+            mesh = BABYLON.MeshBuilder.CreateSphere(name, {
+              diameterX: props.size?.x || 1,
+              diameterY: props.size?.y || 1,
+              diameterZ: props.size?.z || 1
+            }, scene);
             break;
         }
 
@@ -46,15 +54,9 @@
         // Collision ritual
         if (props.collision === true) mesh.checkCollisions = true;
 
-        // Size ritual (Vector3 scaling)
-        if (props.size) {
-          mesh.scaling = new BABYLON.Vector3(props.size.x, props.size.y, props.size.z);
-        }
-
         return mesh;
       }
-    };
-    // ⏱️ wait(t)
+          // ⏱️ wait(t)
     function wait(seconds) {
       return new Promise(resolve => setTimeout(resolve, seconds * 1000));
     }
@@ -72,6 +74,27 @@
         if (line.startsWith("wait(")) {
           const t = parseFloat(line.match(/wait\(([^)]+)\)/)[1]);
           await wait(t);
+        } else if (line.startsWith("local ")) {
+          // handle local cube = graphics.new(...)
+          const match = line.match(/local (\w+)\s*=\s*graphics\.new\("([^"]+)",\s*(\{.*\})\)/);
+          if (match) {
+            const varName = match[1];
+            const type = match[2];
+            const rawProps = match[3];
+            const jsProps = luaToJSObject(rawProps);
+            const props = eval("(" + jsProps + ")");
+            window[varName] = graphics.new(type, props);
+          }
+        } else if (line.includes(".size = Vector3.new")) {
+          const match = line.match(/(\w+)\.size\s*=\s*Vector3\.new\(([^)]+)\)/);
+          if (match) {
+            const varName = match[1];
+            const values = match[2].split(",").map(v => parseFloat(v.trim()));
+            const mesh = window[varName];
+            if (mesh) {
+              mesh.scaling = new BABYLON.Vector3(values[0], values[1], values[2]);
+            }
+          }
         } else if (line.startsWith("graphics.new")) {
           const match = line.match(/graphics\.new\("([^"]+)",\s*(\{.*\})\)/);
           if (match) {
@@ -98,3 +121,5 @@
   </script>
 </body>
 </html>
+
+    };
